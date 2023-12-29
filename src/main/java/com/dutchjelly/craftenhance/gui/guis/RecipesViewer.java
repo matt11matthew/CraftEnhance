@@ -40,6 +40,10 @@ public class RecipesViewer extends GUIElement {
 	    this.recipes = recipes;
 	    this.addBtnListener(ButtonType.NxtPage, this::handlePageChangingClicked);
 	    this.addBtnListener(ButtonType.PrvPage, this::handlePageChangingClicked);
+	    this.addBtnListener(ButtonType.Close, (btn, btnType) -> {
+            Player player = getPlayer();
+            if (player!=null)player.closeInventory();
+        });
         generateInventories(null);
 	}
 

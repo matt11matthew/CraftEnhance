@@ -4,6 +4,7 @@ RecipesViewer:
   button-mapping:
     48: PrvPage
     49: Back
+    1: Close
     50: NxtPage
   template:
     48:

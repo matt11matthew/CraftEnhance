@@ -47,6 +47,9 @@ public class RecipeDisabler extends GUIElement {
         this.disabledRecipe = disabledRecipes;
         this.addBtnListener(ButtonType.NxtPage, this::handlePageChangingClicked);
         this.addBtnListener(ButtonType.PrvPage, this::handlePageChangingClicked);
+        this.addBtnListener(ButtonType.Close, (btn, btnType) -> {
+            if (getPlayer()!=null) getPlayer().closeInventory();
+        });
         this.addBtnListener(ButtonType.SwitchDisablerMode, this::switchMode);
         generateInventories(null);
         updatePlaceHolders();

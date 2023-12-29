@@ -40,6 +40,11 @@ public abstract class GUIElement implements InventoryHolder{
         this.previousGui = previousGui;
         buttonClickHandlers = new HashMap<>();
         buttonClickHandlers.put(ButtonType.Back, Arrays.asList(this::handleBackBtnClicked));
+        buttonClickHandlers.put(ButtonType.Close, Arrays.asList((btn, btnType) -> {
+            if (player!=null){
+                player.closeInventory();
+            }
+        }));
     }
 
     public void handleBackBtnClicked(ItemStack btn, ButtonType btnType){

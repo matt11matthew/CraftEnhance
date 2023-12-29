@@ -34,6 +34,7 @@ public class WBRecipeEditor extends GUIElement {
         inventory = GuiUtil.CopyInventory(getTemplate().getTemplate(), getTemplate().getInvTitle(), this);
 
         addBtnListener(ButtonType.SaveRecipe, this::saveRecipe);
+        addBtnListener(ButtonType.Close, (btn, btnType) -> closeInventory());
         addBtnListener(ButtonType.DeleteRecipe, this::deleteRecipe);
         addBtnListener(ButtonType.ChangeCategory, this::changeCategory);
         addBtnListener(ButtonType.SwitchMatchMeta, this::switchMatchMeta);
@@ -223,6 +224,12 @@ public class WBRecipeEditor extends GUIElement {
 
 	}
 
+    private void closeInventory() {
+        Player player = getPlayer();
+        if (player!=null){
+            player.closeInventory();
+        }
+    }
 	private void saveRecipe(ItemStack button, ButtonType btnType) {
 	    if(getTemplate().getFillSpace().size() != 10) {
 	        throw new ConfigError("Error, fill space size of wb recipe editor is not equal to 10.");
