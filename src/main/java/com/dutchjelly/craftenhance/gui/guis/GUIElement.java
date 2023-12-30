@@ -31,6 +31,14 @@ public abstract class GUIElement implements InventoryHolder {
       this.previousGui = previousGui;
       this.buttonClickHandlers = new HashMap();
       this.buttonClickHandlers.put(ButtonType.Back, Arrays.asList(this::handleBackBtnClicked));
+      this.buttonClickHandlers.put(ButtonType.Close, Arrays.asList(this::handleCloseClick));
+   }
+
+   private void handleCloseClick(ClickType clickType, ItemStack itemStack, ButtonType buttonType) {
+      Player player1 = getPlayer();
+      if (player1!=null){
+         player1.closeInventory();
+      }
    }
 
    public GUIElement(GuiManager manager, GUIElement previousGui, Player player) {
@@ -40,6 +48,7 @@ public abstract class GUIElement implements InventoryHolder {
       this.previousGui = previousGui;
       this.buttonClickHandlers = new HashMap();
       this.buttonClickHandlers.put(ButtonType.Back, Arrays.asList(this::handleBackBtnClicked));
+      this.buttonClickHandlers.put(ButtonType.Close, Arrays.asList(this::handleCloseBtnClicked));
    }
 
    public void handleBackBtnClicked(ClickType click, ItemStack btn, ButtonType btnType) {
@@ -47,7 +56,9 @@ public abstract class GUIElement implements InventoryHolder {
          this.manager.openGUI(this.player, this.previousGui);
       }
    }
-
+   public void handleCloseBtnClicked(ClickType click, ItemStack btn, ButtonType btnType) {
+      player.closeInventory();
+   }
    public void handleEvent(InventoryClickEvent e) {
       if (e.getWhoClicked() instanceof Player) {
          if (!e.getWhoClicked().equals(this.getPlayer())) {

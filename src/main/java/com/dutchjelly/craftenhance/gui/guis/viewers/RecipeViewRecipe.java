@@ -111,6 +111,9 @@ public class RecipeViewRecipe<RecipeT extends EnhancedRecipe> extends MenuHolder
          (new RecipesViewer(this.categoryData, "", player)).menuOpen(player);
       }
 
+      if (value.getButtonType()==ButtonType.Close){
+         player.closeInventory();
+      }
       return false;
    }
 }

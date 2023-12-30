@@ -266,6 +266,10 @@ public class RecipeEditor<RecipeT extends EnhancedRecipe> extends MenuHolder {
             }
          }
 
+         if (value.getButtonType()==ButtonType.Close){
+            player.closeInventory();
+
+         }
          if (value.getButtonType() == ButtonType.ChangeCategoryList) {
             (new CategoryList(this.recipe, this.categoryData, this.permission, this.editorType, "")).menuOpen(player);
          }

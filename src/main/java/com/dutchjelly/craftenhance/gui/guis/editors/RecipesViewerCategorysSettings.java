@@ -140,6 +140,9 @@ public class RecipesViewerCategorysSettings extends MenuHolder {
       if (value.getButtonType() == ButtonType.Back) {
          (new RecipesViewerCategorys("")).menuOpen(player);
       }
+      if (value.getButtonType()==ButtonType.Close){
+         player.closeInventory();
+      }
 
       return false;
    }

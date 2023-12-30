@@ -107,6 +107,10 @@ public class RecipesViewer extends MenuHolder {
    }
 
    public boolean run(com.dutchjelly.craftenhance.gui.templates.MenuButton value, Inventory menu, Player player, ClickType click) {
+      if (value.getButtonType()==ButtonType.Close){
+         player.closeInventory();
+         return true;
+      }
       if (value.getButtonType() == ButtonType.PrvPage) {
          this.previousPage();
          return true;
@@ -131,6 +135,8 @@ public class RecipesViewer extends MenuHolder {
 
          if (value.getButtonType() == ButtonType.Back) {
             (new RecipesViewerCategorys("")).menuOpen(player);
+         } else   if (value.getButtonType() == ButtonType.Close) {
+            player.closeInventory();
          }
 
          return false;

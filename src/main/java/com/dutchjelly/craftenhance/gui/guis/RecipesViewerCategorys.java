@@ -122,6 +122,10 @@ public class RecipesViewerCategorys extends MenuHolder {
       if (value.getButtonType() == ButtonType.PrvPage) {
          this.previousPage();
          return true;
+      } else if (value.getButtonType()==ButtonType.Close){
+
+         player.closeInventory();
+         return true;
       } else if (value.getButtonType() == ButtonType.NxtPage) {
          this.nextPage();
          return true;

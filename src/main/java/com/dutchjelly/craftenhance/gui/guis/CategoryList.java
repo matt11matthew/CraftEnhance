@@ -142,13 +142,22 @@ public class CategoryList<RecipeT extends EnhancedRecipe> extends MenuHolder {
       if (value.getButtonType() == ButtonType.PrvPage) {
          this.previousPage();
          return true;
+      } else if (value.getButtonType()==ButtonType.Close){
+         player.closeInventory();
+         return true;
       } else if (value.getButtonType() == ButtonType.NxtPage) {
          this.nextPage();
          return true;
       } else {
          if (value.getButtonType() == ButtonType.Back) {
             (new RecipeEditor(this.recipe, this.categoryData, (String)null, this.editorType)).menuOpen(player);
+         } else    if (value.getButtonType() == ButtonType.Close) {
+           player.closeInventory();
          }
+         if (value.getButtonType()==ButtonType.Close){
+            player.closeInventory();
+         }
+
 
          if (value.getButtonType() == ButtonType.Search) {
             if (click == ClickType.RIGHT) {

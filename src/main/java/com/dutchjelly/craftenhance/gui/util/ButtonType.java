@@ -4,6 +4,7 @@ public enum ButtonType {
    NxtPage(""),
    PrvPage(""),
    Back(""),
+   Close(""),
    SaveRecipe(""),
    DeleteRecipe(""),
    SwitchShaped(""),

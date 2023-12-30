@@ -27,6 +27,7 @@ public class OrderEditor extends GUIElement {
       Debug.Send((Object)"An instance is being made for an order editor");
       this.recipes = new ArrayList(this.getManager().getMain().getFm().getRecipes());
       this.addBtnListener(ButtonType.NxtPage, this::handlePageChangingClicked);
+      this.addBtnListener(ButtonType.Close, this::handleCloseBtnClicked);
       this.addBtnListener(ButtonType.PrvPage, this::handlePageChangingClicked);
       this.addBtnListener(ButtonType.SaveRecipe, this::handleSave);
       this.currentPage = 0;
