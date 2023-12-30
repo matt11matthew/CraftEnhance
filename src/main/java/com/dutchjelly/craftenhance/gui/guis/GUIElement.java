@@ -1,97 +1,110 @@
 package com.dutchjelly.craftenhance.gui.guis;
 
 import com.dutchjelly.craftenhance.gui.GuiManager;
+import com.dutchjelly.craftenhance.gui.interfaces.IButtonHandler;
 import com.dutchjelly.craftenhance.gui.templates.GuiTemplate;
 import com.dutchjelly.craftenhance.gui.util.ButtonType;
-import com.dutchjelly.craftenhance.gui.IButtonHandler;
-import lombok.Getter;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.NonNull;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+public abstract class GUIElement implements InventoryHolder {
+   private final GuiManager manager;
+   @NonNull
+   private final GuiTemplate template;
+   private final Player player;
+   private final GUIElement previousGui;
+   private Map<ButtonType, List<IButtonHandler>> buttonClickHandlers;
 
-public abstract class GUIElement implements InventoryHolder{
+   public GUIElement(GuiManager manager, GuiTemplate template, GUIElement previousGui, Player player) {
+      this.manager = manager;
+      this.template = template;
+      this.player = player;
+      this.previousGui = previousGui;
+      this.buttonClickHandlers = new HashMap();
+      this.buttonClickHandlers.put(ButtonType.Back, Arrays.asList(this::handleBackBtnClicked));
+   }
 
-    @Getter
-    private final GuiManager manager;
+   public GUIElement(GuiManager manager, GUIElement previousGui, Player player) {
+      this.manager = manager;
+      this.template = manager.getMain().getGuiTemplatesFile().getTemplate(this.getClass());
+      this.player = player;
+      this.previousGui = previousGui;
+      this.buttonClickHandlers = new HashMap();
+      this.buttonClickHandlers.put(ButtonType.Back, Arrays.asList(this::handleBackBtnClicked));
+   }
 
-    @Getter @NonNull
-    private final GuiTemplate template;
+   public void handleBackBtnClicked(ClickType click, ItemStack btn, ButtonType btnType) {
+      if (this.previousGui != null) {
+         this.manager.openGUI(this.player, this.previousGui);
+      }
+   }
 
-    @Getter
-    private final Player player;
-
-    @Getter
-    private final GUIElement previousGui;
-
-    private Map<ButtonType, List<IButtonHandler>> buttonClickHandlers;
-
-    public GUIElement(GuiManager manager, GuiTemplate template, GUIElement previousGui, Player player){
-        this.manager = manager;
-        this.template = template;
-        this.player = player;
-        this.previousGui = previousGui;
-        buttonClickHandlers = new HashMap<>();
-        buttonClickHandlers.put(ButtonType.Back, Arrays.asList(this::handleBackBtnClicked));
-        buttonClickHandlers.put(ButtonType.Close, Arrays.asList((btn, btnType) -> {
-            if (player!=null){
-                player.closeInventory();
-            }
-        }));
-    }
-
-    public void handleBackBtnClicked(ItemStack btn, ButtonType btnType){
-        if(previousGui == null) return;
-        manager.openGUI(player, previousGui);
-    }
-
-    public void handleEvent(InventoryClickEvent e){
-
-        if(!(e.getWhoClicked() instanceof Player)) return;
-
-        //could be removed if multiple players are allowed to use same gui
-        if(!e.getWhoClicked().equals(getPlayer()))
+   public void handleEvent(InventoryClickEvent e) {
+      if (e.getWhoClicked() instanceof Player) {
+         if (!e.getWhoClicked().equals(this.getPlayer())) {
             throw new IllegalStateException("Other player clicked than owner of GUI.");
+         } else {
+            int clickedSlot = e.getSlot();
+            ButtonType clickedButton = (ButtonType)this.getTemplate().getButtonMapping().get(clickedSlot);
+            if (clickedButton != null) {
+               List<IButtonHandler> btnHandlers = (List)this.buttonClickHandlers.get(clickedButton);
+               if (btnHandlers != null) {
+                  btnHandlers.forEach((x) -> {
+                     x.handleClick(e.getClick(), e.getCurrentItem(), clickedButton);
+                  });
+               }
+            }
 
-        int clickedSlot = e.getSlot();
+            this.handleEventRest(e);
+         }
+      }
+   }
 
-        //Handle button clicks.
-        ButtonType clickedButton = getTemplate().getButtonMapping().get(clickedSlot);
-        if(clickedButton != null){
-            List<IButtonHandler> btnHandlers = buttonClickHandlers.get(clickedButton);
-            if(btnHandlers != null)
-                btnHandlers.forEach(x -> x.handleClick(e.getCurrentItem(), clickedButton));
-        }
+   public void handleOutsideClick(InventoryClickEvent e) {
+      if (e.getWhoClicked() instanceof Player) {
+         ;
+      }
+   }
 
-        //Allow implementation to handle event.
-        handleEventRest(e);
-    }
+   public void handleDragging(InventoryDragEvent e) {
+   }
 
-    public void handleOutsideClick(InventoryClickEvent e){
-        if(!(e.getWhoClicked() instanceof Player)) return;
-    }
+   public void addBtnListener(ButtonType type, IButtonHandler listener) {
+      if (this.buttonClickHandlers.containsKey(type)) {
+         ((List)this.buttonClickHandlers.get(type)).add(listener);
+      } else {
+         this.buttonClickHandlers.put(type, Arrays.asList(listener));
+      }
 
-    public void handleDragging(InventoryDragEvent e){
-    }
+   }
 
-    public void addBtnListener(ButtonType type, IButtonHandler listener){
-        if(buttonClickHandlers.containsKey(type)){
-            buttonClickHandlers.get(type).add(listener);
-        }else{
-            buttonClickHandlers.put(type, Arrays.asList(listener));
-        }
-    }
+   public abstract void handleEventRest(InventoryClickEvent var1);
 
-	public abstract void handleEventRest(InventoryClickEvent e);
+   public abstract boolean isCancelResponsible();
 
-	public abstract boolean isCancelResponsible();
+   public GuiManager getManager() {
+      return this.manager;
+   }
 
-	
+   @NonNull
+   public GuiTemplate getTemplate() {
+      return this.template;
+   }
+
+   public Player getPlayer() {
+      return this.player;
+   }
+
+   public GUIElement getPreviousGui() {
+      return this.previousGui;
+   }
 }

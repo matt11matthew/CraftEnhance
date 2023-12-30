@@ -1,62 +1,78 @@
 package com.dutchjelly.craftenhance.commands.ceh;
 
 import com.dutchjelly.craftenhance.CraftEnhance;
-import com.dutchjelly.craftenhance.IEnhancedRecipe;
-import com.dutchjelly.craftenhance.PermissionTypes;
-import com.dutchjelly.craftenhance.commandhandling.ICommand;
 import com.dutchjelly.craftenhance.commandhandling.CommandRoute;
 import com.dutchjelly.craftenhance.commandhandling.CustomCmdHandler;
-import com.dutchjelly.craftenhance.crafthandling.RecipeLoader;
-import com.dutchjelly.craftenhance.crafthandling.recipes.WBRecipe;
+import com.dutchjelly.craftenhance.commandhandling.ICommand;
+import com.dutchjelly.craftenhance.files.CategoryData;
 import com.dutchjelly.craftenhance.gui.guis.RecipesViewer;
-import com.dutchjelly.craftenhance.gui.templates.GuiTemplate;
+import com.dutchjelly.craftenhance.gui.guis.RecipesViewerCategorys;
 import com.dutchjelly.craftenhance.messaging.Messenger;
+import java.util.ArrayList;
+import java.util.List;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
-@CommandRoute(cmdPath={"recipes","ceh.viewer"}, perms="perms.recipe-viewer")
+@CommandRoute(
+   cmdPath = {"recipes", "ceh.viewer"},
+   perms = "perms.recipe-viewer"
+)
 public class RecipesCmd implements ICommand {
+   private final CustomCmdHandler handler;
 
-	private CustomCmdHandler handler;
-	
-	public RecipesCmd(CustomCmdHandler handler){
-		this.handler = handler;
-	}
+   public RecipesCmd(CustomCmdHandler handler) {
+      this.handler = handler;
+   }
 
-	@Override
-	public String getDescription() {
-		return "The view command opens an inventory that contains all available recipes for the sender of the command, unless it's configured to show all. The usage is /ceh view or /recipes";
-	}
+   public String getDescription() {
+      return "The view command opens an inventory that contains all available recipes for the sender of the command, unless it's configured to show all. The usage is /ceh view or /recipes";
+   }
 
-	@Override
-	public void handlePlayerCommand(Player p, String[] args) {
-		final CraftEnhance main = handler.getMain();
-        final GuiTemplate template = main.getGuiTemplatesFile().getTemplate(RecipesViewer.class);
-		final List<IEnhancedRecipe> recipes = RecipeLoader.getInstance().getLoadedRecipes().stream().filter(x ->
-				(!handler.getMain().getConfig().getBoolean("only-show-available") || x.getPermissions() == null || x.getPermissions() == "" || p.hasPermission(x.getPermissions()))
-				&& (!x.isHidden() || p.hasPermission(PermissionTypes.Edit.getPerm()) || p.hasPermission(x.getPermissions() + ".hidden"))).collect(Collectors.toList()
-        );
-		final RecipesViewer gui = new RecipesViewer(main.getGuiManager(), template, null, p, new ArrayList<>(recipes));
-
-		if(args.length == 1){
-		    try{
-                int pageIndex = Integer.valueOf(args[0]);
-                gui.setPage(pageIndex); //setpage will handle invalid indexes and will jump to the nearest valid page
-            }catch(NumberFormatException e){
-		        p.sendMessage("that's not a number");
+   public void handlePlayerCommand(Player p, String[] args) {
+      RecipesViewerCategorys menu = new RecipesViewerCategorys("");
+      if (args.length > 1) {
+         if (args[0].equals("page")) {
+            try {
+               int pageIndex = Integer.parseInt(args[1]);
+               boolean b = menu.setPage(pageIndex);
+               if (!b) {
+                  p.sendMessage("Could not open this page " + args[1] + " , will open first page.");
+               }
+            } catch (NumberFormatException var6) {
+               p.sendMessage("that's not a number " + args[1]);
             }
-        }
-		handler.getMain().getGuiManager().openGUI(p, gui);
-	}
+         }
 
-	@Override
-	public void handleConsoleCommand(CommandSender sender, String[] args) {
-		Messenger.MessageFromConfig("messages.commands.only-for-players", sender);
-	}
-	
+         if (args[0].equals("category")) {
+            CategoryData categoryData = CraftEnhance.self().getCategoryDataCache().get(args[1]);
+            if (categoryData != null) {
+               (new RecipesViewer(categoryData, "", p)).menuOpen(p);
+            } else {
+               p.sendMessage("that's not a valid category " + args[1]);
+            }
 
+            return;
+         }
+      }
+
+      menu.menuOpen(p);
+   }
+
+   public List<String> handleTabCompletion(CommandSender sender, String[] args) {
+      List<String> list = new ArrayList();
+      if (args.length == 2) {
+         list.add("page");
+         list.add("category");
+      }
+
+      if (args.length == 3 && args[1].contains("category")) {
+         list.addAll(CraftEnhance.self().getCategoryDataCache().getCategoryNames());
+      }
+
+      return list;
+   }
+
+   public void handleConsoleCommand(CommandSender sender, String[] args) {
+      Messenger.MessageFromConfig("messages.commands.only-for-players", sender);
+   }
 }

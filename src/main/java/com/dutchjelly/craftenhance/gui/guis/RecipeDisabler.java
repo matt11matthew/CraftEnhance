@@ -3,173 +3,161 @@ package com.dutchjelly.craftenhance.gui.guis;
 import com.dutchjelly.bukkitadapter.Adapter;
 import com.dutchjelly.craftenhance.CraftEnhance;
 import com.dutchjelly.craftenhance.crafthandling.RecipeLoader;
-import com.dutchjelly.craftenhance.gui.GuiManager;
-import com.dutchjelly.craftenhance.gui.templates.GuiTemplate;
+import com.dutchjelly.craftenhance.files.MenuSettingsCache;
+import com.dutchjelly.craftenhance.gui.templates.MenuTemplate;
 import com.dutchjelly.craftenhance.gui.util.ButtonType;
+import com.dutchjelly.craftenhance.gui.util.FormatListContents;
 import com.dutchjelly.craftenhance.gui.util.GuiUtil;
 import com.dutchjelly.craftenhance.gui.util.InfoItemPlaceHolders;
-import com.dutchjelly.craftenhance.messaging.Debug;
-import org.bukkit.Bukkit;
+import com.dutchjelly.craftenhance.prompt.HandleChatInput;
+import craftenhance.libs.menulib.MenuButton;
+import craftenhance.libs.menulib.MenuHolder;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+public class RecipeDisabler extends MenuHolder {
+   private final MenuSettingsCache menuSettingsCache = CraftEnhance.self().getMenuSettingsCache();
+   private final MenuTemplate menuTemplate;
+   private final MenuButton fillSlots;
+   boolean enableMode;
 
-public class RecipeDisabler extends GUIElement {
-
-    //Reference to objects managed outside this gui.
-    protected List<Recipe> enabledRecipes;
-    protected List<Recipe> disabledRecipe;
-
-    private Map<Integer, Recipe> placedRecipes = new HashMap<>();
-
-    //If true, you can enable *disabled* recipes.
-    boolean enableMode = false;
-
-    private Inventory[] inventories;
-    private int currentPage = 0;
-    //TODO: implement map for recipe location mapping to allow customizable recipe locations. I'm thinking of making that a config thing in a RecipesViewer GuiTemplate.
-
-    public RecipeDisabler(GuiManager manager, GuiTemplate template, GUIElement previous, Player p, List<Recipe> enabledRecipes, List<Recipe> disabledRecipes){
-        super(manager, template, previous, p);
-        Debug.Send("An instance is being made for a recipe disabler");
-        this.enabledRecipes = enabledRecipes;
-        this.disabledRecipe = disabledRecipes;
-        this.addBtnListener(ButtonType.NxtPage, this::handlePageChangingClicked);
-        this.addBtnListener(ButtonType.PrvPage, this::handlePageChangingClicked);
-        this.addBtnListener(ButtonType.Close, (btn, btnType) -> {
-            if (getPlayer()!=null) getPlayer().closeInventory();
-        });
-        this.addBtnListener(ButtonType.SwitchDisablerMode, this::switchMode);
-        generateInventories(null);
-        updatePlaceHolders();
-    }
-
-    private void switchMode(ItemStack itemStack, ButtonType buttonType) {
-        this.enableMode = !this.enableMode;
-        this.currentPage = 0;
-        generateInventories(null);
-        updatePlaceHolders();
-        getManager().openGUI(getPlayer(), this);
-    }
-
-    private void updatePlaceHolders(){
-        List<Integer> fillSpace = getTemplate().getFillSpace();
-        ItemStack[] template = getTemplate().getTemplate();
-        Map<String, String> placeHolders = new HashMap<String,String>(){{
-            put(InfoItemPlaceHolders.DisableMode.getPlaceHolder(), enableMode ? "enable recipes by clicking them" : "disable recipes by clicking them");
-        }};
-
-        for(int i = 0; i < template.length; i++){
-            if(fillSpace.contains(i)) continue;
-            if(template[i] == null) continue;
-            getInventory().setItem(i, GuiUtil.ReplaceAllPlaceHolders(template[i].clone(), placeHolders));
-        }
-    }
-
-    private List<Recipe> getRecipes(){
-        return !enableMode ? enabledRecipes : disabledRecipe;
-    }
-
-    //protected so a editor doesn't have to create a new instance when it deletes something and the user goes to previous page.
-    protected void generateInventories(Player subscriber){
-
-        int itemsPerPage = getTemplate().getFillSpace().size();
-        int requiredPages = Math.max((int)Math.ceil((double)getRecipes().size()/itemsPerPage), 1);
-        //We need more pages if statically positioned recipes are placed at a higher page index.
-
-        List<Integer> fillSpace = getTemplate().getFillSpace();
-
-        inventories = new Inventory[requiredPages];
-        int titledInventories = getTemplate().getInvTitles().size();
-        int recipeIndex = 0;
-
-        for(int i = 0; i < requiredPages; i++) {
-            inventories[i] = GuiUtil.CopyInventory(getTemplate().getTemplate(), getTemplate().getInvTitles().get(i % titledInventories), this);
-            for(int spot : fillSpace){
-                if(recipeIndex >= getRecipes().size()) break;
-
-                ItemStack result = getRecipes().get(recipeIndex++).getResult();
-                if(GuiUtil.isNull(result)) {
-                    result = new ItemStack(Material.BARRIER);
-                    ItemMeta meta = result.getItemMeta();
-                    meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', "&4Complex Recipe: " + Adapter.GetRecipeIdentifier(getRecipes().get(recipeIndex-1))));
-                    meta.setLore(Arrays.asList("&eWARN: &fThis recipe is complex, which", "&f means that the result is only known", " &f&oafter&r&f the content of the crafting table is sent", " &fto the server. Think of repairing or coloring recipes.", " &f&nSo disabling is not recommended!"));
-                    meta.setLore(meta.getLore().stream().map(x -> ChatColor.translateAlternateColorCodes('&', x)).collect(Collectors.toList()));
-                    result.setItemMeta(meta);
-                }else{
-                    ItemMeta meta = result.getItemMeta();
-                    meta.setLore(Arrays.asList(ChatColor.translateAlternateColorCodes('&', "&3key: &f" + Adapter.GetRecipeIdentifier(getRecipes().get(recipeIndex-1)))));
-                    result.setItemMeta(meta);
-                }
-                inventories[i].setItem(spot, result);
-                placedRecipes.put(i*inventories[i].getSize() + spot, getRecipes().get(recipeIndex-1));
+   public RecipeDisabler(List<Recipe> enabledRecipes, List<Recipe> disabledRecipes, final boolean enableMode, String recipesSeachFor) {
+      super(FormatListContents.getRecipes(enabledRecipes, disabledRecipes, enableMode, recipesSeachFor));
+      this.menuTemplate = (MenuTemplate)this.menuSettingsCache.getTemplates().get("RecipeDisabler");
+      this.enableMode = enableMode;
+      this.setFillSpace(this.menuTemplate.getFillSlots());
+      this.setTitle(this.menuTemplate.getMenuTitel());
+      this.setMenuSize(GuiUtil.invSize("RecipeDisabler", this.menuTemplate.getAmountOfButtons()));
+      this.setMenuOpenSound(this.menuTemplate.getSound());
+      this.fillSlots = new MenuButton() {
+         public void onClickInsideMenu(Player player, Inventory inventory, ClickType clickType, ItemStack itemStack, Object o) {
+            if (o instanceof Recipe) {
+               if (enableMode) {
+                  if (RecipeLoader.getInstance().enableServerRecipe((Recipe)o)) {
+                     RecipeDisabler.this.updateButtons();
+                  }
+               } else if (RecipeLoader.getInstance().disableServerRecipe((Recipe)o)) {
+                  RecipeDisabler.this.updateButtons();
+               }
             }
-        }
 
-        //Check if current-page is not outside the bounds in case a recipe is removed.
-        if(currentPage >= inventories.length) currentPage = inventories.length-1;
-    }
+         }
 
-    private void handlePageChangingClicked(ItemStack btn, ButtonType btnType){
-        int direction = btnType == ButtonType.PrvPage ? -1 : 1;
-        currentPage += direction;
-        if(currentPage < 0) currentPage = inventories.length-1;
-        else if(currentPage >= inventories.length) currentPage = 0;
-        getManager().openGUI(getPlayer(), this);
-    }
+         public ItemStack getItem(Object object) {
+            if (object instanceof Recipe) {
+               ItemStack result = ((Recipe)object).getResult();
+               ItemMeta meta;
+               if (GuiUtil.isNull(result)) {
+                  result = new ItemStack(Material.BARRIER);
+                  meta = result.getItemMeta();
+                  meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', "&4Complex Recipe: " + Adapter.GetRecipeIdentifier((Recipe)object)));
+                  meta.setLore(Arrays.asList("&eWARN: &fThis recipe is complex, which", "&f means that the result is only known", " &f&oafter&r&f the content of the crafting table is sent", " &fto the server. Think of repairing or coloring recipes.", " &f&nSo disabling is not recommended!"));
+                  meta.setLore((List)meta.getLore().stream().map((x) -> {
+                     return ChatColor.translateAlternateColorCodes('&', x);
+                  }).collect(Collectors.toList()));
+                  result.setItemMeta(meta);
+               } else {
+                  meta = result.getItemMeta();
+                  meta.setLore(Arrays.asList(ChatColor.translateAlternateColorCodes('&', "&3key: &f" + Adapter.GetRecipeIdentifier((Recipe)object))));
+                  result.setItemMeta(meta);
+               }
 
-    @Override
-    public Inventory getInventory() {
-        return inventories[currentPage];
-    }
+               return result;
+            } else {
+               return null;
+            }
+         }
 
-    @Override
-    public void handleEventRest(InventoryClickEvent e) {
-        int clickedSlot = e.getSlot();
-        List<Integer> fillSpace = getTemplate().getFillSpace();
-        if(!fillSpace.contains(clickedSlot))
-            return;
+         public ItemStack getItem() {
+            return null;
+         }
+      };
+   }
 
-        int clickedRecipePosition = currentPage*getInventory().getSize() + clickedSlot;
-        if(!placedRecipes.containsKey(clickedRecipePosition))
-            return;
-        Recipe recipe = placedRecipes.get(clickedRecipePosition);
+   public MenuButton getFillButtonAt(Object object) {
+      return this.fillSlots;
+   }
 
+   public MenuButton getButtonAt(int slot) {
+      if (this.menuTemplate == null) {
+         return null;
+      } else {
+         Iterator var2 = this.menuTemplate.getMenuButtons().entrySet().iterator();
 
+         Entry menuTemplate;
+         do {
+            if (!var2.hasNext()) {
+               return null;
+            }
 
-       if(enableMode){
-           if(RecipeLoader.getInstance().enableServerRecipe(recipe)){
-               getInventory().setItem(clickedSlot, null);
-//               getRecipes().remove(recipe);
-           }
+            menuTemplate = (Entry)var2.next();
+         } while(!((List)menuTemplate.getKey()).contains(slot));
 
-       }else{
-           if(RecipeLoader.getInstance().disableServerRecipe(recipe)){
-               getInventory().setItem(clickedSlot, null);
-//               getRecipes().remove(recipe);
-           }
-       }
-    }
+         return this.registerButtons((com.dutchjelly.craftenhance.gui.templates.MenuButton)menuTemplate.getValue());
+      }
+   }
 
-    @Override
-    public boolean isCancelResponsible() {
-        return false;
-    }
+   private MenuButton registerButtons(final com.dutchjelly.craftenhance.gui.templates.MenuButton value) {
+      return new MenuButton() {
+         public void onClickInsideMenu(Player player, Inventory menu, ClickType click, ItemStack clickedItem, Object object) {
+            if (RecipeDisabler.this.run(value, menu, player, click)) {
+               RecipeDisabler.this.updateButtons();
+            }
 
+         }
 
-    public void setPage(int page){
-        if(page < 0) page = 0;
-        currentPage = Math.min(page, inventories.length-1);
-    }
+         public ItemStack getItem() {
+            Map<String, String> placeHolders = new HashMap<String, String>() {
+               {
+                  this.put(InfoItemPlaceHolders.DisableMode.getPlaceHolder(), RecipeDisabler.this.enableMode ? "enable recipes by clicking them" : "disable recipes by clicking them");
+               }
+            };
+            return value.getItemStack() == null ? null : GuiUtil.ReplaceAllPlaceHolders(value.getItemStack().clone(), placeHolders);
+         }
+      };
+   }
+
+   public boolean run(com.dutchjelly.craftenhance.gui.templates.MenuButton value, Inventory menu, Player player, ClickType click) {
+      if (value.getButtonType() == ButtonType.PrvPage) {
+         this.previousPage();
+         return true;
+      } else if (value.getButtonType() == ButtonType.NxtPage) {
+         this.nextPage();
+         return true;
+      } else if (value.getButtonType() == ButtonType.SwitchDisablerMode) {
+         this.enableMode = !this.enableMode;
+         (new RecipeDisabler(RecipeLoader.getInstance().getServerRecipes(), RecipeLoader.getInstance().getDisabledServerRecipes(), this.enableMode, "")).menuOpen(player);
+         return true;
+      } else {
+         if (value.getButtonType() == ButtonType.Search) {
+            if (click == ClickType.RIGHT) {
+               (new HandleChatInput(this, (msg) -> {
+                  if (GuiUtil.seachCategory(msg)) {
+                     (new RecipeDisabler(RecipeLoader.getInstance().getServerRecipes(), RecipeLoader.getInstance().getDisabledServerRecipes(), this.enableMode, msg)).menuOpen(this.getViewer());
+                     return false;
+                  } else {
+                     return true;
+                  }
+               })).setMessages("Search for recipe items").start(this.getViewer());
+            } else {
+               (new RecipeDisabler(RecipeLoader.getInstance().getServerRecipes(), RecipeLoader.getInstance().getDisabledServerRecipes(), this.enableMode, "")).menuOpen(player);
+            }
+         }
+
+         return false;
+      }
+   }
 }

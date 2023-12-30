@@ -1,9 +1,12 @@
 package com.dutchjelly.craftenhance.gui.templates;
 
 import com.dutchjelly.bukkitadapter.Adapter;
-import com.dutchjelly.craftenhance.ConfigError;
+import com.dutchjelly.craftenhance.exceptions.ConfigError;
 import com.dutchjelly.craftenhance.gui.util.SkullCreator;
-import lombok.Getter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
 import org.bukkit.Material;
@@ -13,77 +16,72 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
 public class GuiItemTemplate {
+   public static final String GUI_SKULL_MATERIAL_NAME = "GUI_SKULL_ITEM";
+   private final ItemStack item;
 
-    public final static String GUI_SKULL_MATERIAL_NAME = "GUI_SKULL_ITEM";
+   public GuiItemTemplate(ConfigurationSection config) {
+      if (config == null) {
+         this.item = null;
+      } else {
+         String material = config.getString("material");
+         if (material == null) {
+            throw new ConfigError("found null material");
+         } else {
+            String color = config.getString("color");
+            if (color == null) {
+               Material mat = Adapter.getMaterial(material);
+               if (mat == null) {
+                  throw new ConfigError("material " + material + " not found");
+               }
 
+               this.item = new ItemStack(mat);
+            } else if (material.equalsIgnoreCase("GUI_SKULL_ITEM")) {
+               if (color.startsWith("uuid")) {
+                  this.item = SkullCreator.itemFromUuid(UUID.fromString(color.replaceFirst("uuid", "")));
+               } else if (color.startsWith("base64")) {
+                  this.item = SkullCreator.itemFromBase64(color.replaceFirst("base64", ""));
+               } else {
+                  if (!color.startsWith("url")) {
+                     throw new ConfigError("specified skull meta is invalid");
+                  }
 
-    @Getter
-    private final ItemStack item;
+                  this.item = SkullCreator.itemFromUrl(color.replaceFirst("url", ""));
+               }
+            } else {
+               DyeColor dColor = DyeColor.valueOf(color);
+               if (dColor == null) {
+                  throw new ConfigError("color " + color + " not found");
+               }
 
-    public GuiItemTemplate(ConfigurationSection config){
-        if(config == null){
-            item = null;
-            return;
-        }
-
-        String material = config.getString("material");
-        if(material == null) throw new ConfigError("found null material");
-
-        String color = config.getString("color");
-
-        //This is so the same config can be used across versions. If the item is colored, it's type should be named
-        //after the base type name, so e.g. STAINED_GLASS_PANE
-        if(color == null){
-            Material mat = Adapter.getMaterial(material);
-            if(mat == null) throw new ConfigError("material " + material + " not found");
-            item = new ItemStack(mat);
-        }else{
-
-            //Tricky way to support skull meta's using the color attribute as data.
-            if(material.equalsIgnoreCase(GUI_SKULL_MATERIAL_NAME)){
-                if(color.startsWith("uuid"))
-                    item = SkullCreator.itemFromUuid(UUID.fromString(color.replaceFirst("uuid", "")));
-                else if(color.startsWith("base64"))
-                    item = SkullCreator.itemFromBase64(color.replaceFirst("base64", ""));
-                else if(color.startsWith("url"))
-                    item = SkullCreator.itemFromUrl(color.replaceFirst("url", ""));
-                else throw new ConfigError("specified skull meta is invalid");
+               this.item = Adapter.getColoredItem(material, dColor);
             }
 
-            else{
-                DyeColor dColor = DyeColor.valueOf(color);
-                if(dColor == null) throw new ConfigError("color " + color + " not found");
-                item = Adapter.getColoredItem(material, dColor);
+            List<String> lore = config.getStringList("lore");
+            if (lore != null) {
+               lore = (List)lore.stream().map((x) -> {
+                  return ChatColor.translateAlternateColorCodes('&', x);
+               }).collect(Collectors.toList());
             }
-        }
 
+            String name = ChatColor.translateAlternateColorCodes('&', config.getString("name"));
+            boolean glow = config.getBoolean("glow");
+            ItemMeta meta = this.item.getItemMeta();
+            meta.setLore((List)(lore == null ? new ArrayList() : lore));
+            meta.setDisplayName(name);
+            meta.addItemFlags(new ItemFlag[]{ItemFlag.HIDE_ENCHANTS});
+            meta.addItemFlags(new ItemFlag[]{ItemFlag.HIDE_ATTRIBUTES});
+            meta.addItemFlags(new ItemFlag[]{ItemFlag.HIDE_POTION_EFFECTS});
+            if (glow) {
+               meta.addEnchant(Enchantment.DURABILITY, 10, true);
+            }
 
+            this.item.setItemMeta(meta);
+         }
+      }
+   }
 
-        List<String> lore = config.getStringList("lore");
-        if(lore != null)
-            lore = lore.stream().map(x -> ChatColor.translateAlternateColorCodes('&', x)).collect(Collectors.toList());
-
-        String name = ChatColor.translateAlternateColorCodes('&', config.getString("name"));
-
-        boolean glow = config.getBoolean("glow");
-
-        ItemMeta meta = item.getItemMeta();
-        meta.setLore(lore == null ? new ArrayList<>() : lore); //avoid null lore
-
-        meta.setDisplayName(name);
-        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-        meta.addItemFlags(ItemFlag.HIDE_POTION_EFFECTS);
-        if(glow)
-            meta.addEnchant(Enchantment.DURABILITY, 10, true);
-
-        item.setItemMeta(meta);
-    }
-
+   public ItemStack getItem() {
+      return this.item;
+   }
 }
